@@ -107,7 +107,7 @@ for (epoch in 1:epochs) {
 # prediction with optimization parameter
 y_pred <- Phi %*% beta
 
-# 绘制结果
+# plot the outcome
 plot(data$x, data$y, col = 'blue', main = 'Fourier Basis Nonparametric Estimation with Density-aware SGD')
 lines(data$x, y_pred, col = 'green', lwd = 2)
 lines(data$x, y_true, col = 'red', lwd = 2)
