@@ -1,89 +1,75 @@
+#This code shows the SGD optimization applied in FDA(nonparametic regression)
+#I simulate a 1000 elements sample and the original function as y = sin(x) + 0.5 * sin(3 * x) + sigma
+#Then with Fourier basis functions, I choose stochastic data from the sample and calculate the gradient
+#And make the parameter descent with the gradient
+
+
 # set seed
 set.seed(123)
 
 # sample number
-n <- 1000  
-x <- seq(0, 2 * pi, length.out = n) 
+n = 1000  
+x = seq(0, 2 * pi, length.out = n) 
 
 # simulate a function
-f <- function(x) {sin(x) + 0.5 * sin(3 * x)} 
+f = function(x) {sin(x) + 0.5 * sin(3 * x)} 
 
-y_true <- f(x)
-sigma <- 1  # noise 
-y <- y_true + rnorm(n, mean = 0, sd = sigma)
+y_true = f(x)
+sigma = 1  # noise 
+y = y_true + rnorm(n, mean = 0, sd = sigma)
 
 # store the simulate data
-data <- data.frame(x = x, y = y)
-
-#plot the figure of x and y
-plot(x, y, col = 'blue', main = 'Generated Data with Noise')
-lines(x, y_true, col = 'red', lwd = 2)
-legend('topright', legend = c('Noisy Data', 'True Function'), col = c('blue', 'red'), lwd = c(1, 2))
+data = data.frame(x = x, y = y)
 
 #function for basis
-fourier_basis <- function(x, K) {
-  Phi_list <- lapply(1:K, function(k) cbind(sin(k * x), cos(k * x)))
-  Phi <- do.call(cbind, Phi_list)
+fourier_basis = function(x, K) {
+  Phi_list = lapply(1:K, function(k) cbind(sin(k * x), cos(k * x)))
+  Phi = do.call(cbind, Phi_list)
   return(Phi)
 }
 
 #calculate the basis matrix
-K <- 10
-Phi <- fourier_basis(data$x, K)
-
-# 定义蒙特卡洛密度函数估计
-density_function <- function(x, data, n_samples) {
-  # 从数据中随机抽取样本
-  sampled_data <- sample(data$x, n_samples, replace = TRUE)
-  # 估计密度函数（这里用核密度估计）
-  density_est <- density(sampled_data, bw = "nrd0")
-  # 返回估计的密度
-  return(approx(density_est$x, density_est$y, xout = x, rule = 2)$y)
-}
+K = 10
+Phi = fourier_basis(data$x, K)
 
 
 #second derivative of basis function
-fourier_basis_2nd_derivative <- function(x, K) {
-  Phi_2nd_list <- lapply(1:K, function(k) cbind(-k^2 * sin(k * x), -k^2 * cos(k * x)))
-  Phi_2nd <- do.call(cbind, Phi_2nd_list)
+fourier_basis_2nd_derivative = function(x, K) {
+  Phi_2nd_list = lapply(1:K, function(k) cbind(-k^2 * sin(k * x), -k^2 * cos(k * x)))
+  Phi_2nd = do.call(cbind, Phi_2nd_list)
   return(Phi_2nd)
 }
-Phi_2nd <- fourier_basis_2nd_derivative(data$x, K)
-
-
-#R <- t(Phi_2nd) %*% Phi_2nd / n
+Phi_2nd = fourier_basis_2nd_derivative(data$x, K)
 
 
 # regularization
-R <- diag(2 * K)  # 简单的单位矩阵，你可以根据需要修改
+R = diag(2 * K)  # 简单的单位矩阵，可以根据需要修改
 
 
 # define loss function
-loss_function <- function(beta, phi, y, lambda, p, R, K) {
-  n <- nrow(phi)
+loss_function = function(beta, phi, y, lambda, R, K) {
+  n = nrow(phi)
   mse = 0
   for(i in 1 : n){
-    for(j in 1 : 2 * K){
-      mse = mse + (y[i]-beta[j] * phi[i,j])^2
-    }
+    
+      mse = mse + (y[i] - phi[i,] * beta)^2
     
   }
-  mse=mse/n
-  regularization <- lambda * t(beta) %*% R %*% beta
+  mse = mse / n
+  regularization = lambda * t(beta) %*% R %*% beta
   return(mse + regularization)
 }
 
 
-# 定义损失函数的梯度
-gradient <- function(beta, phi, y, lambda, p, R, K) {
-  n <- nrow(phi)
+# gradient of loss function
+gradient = function(beta, phi, y, lambda, R, K) {
+  n = nrow(phi)
   mse_grad = 0
+  
   for(i in 1 : n){
-    for(j in i : 2 * K){
-      mse_grad = mse_grad + (-2 * (y[i]-beta[j] * phi[i,j]))
-    }
+      mse_grad = mse_grad + (-2 * (y[i] - phi[i, ] * beta))
   }
-  mse_grad=mse_grad/n
+  mse_grad = mse_grad/n
   regularization_grad = 0
   for(i in 1 : 2 * K){
     for(j in 1 :2 * K){
@@ -93,31 +79,32 @@ gradient <- function(beta, phi, y, lambda, p, R, K) {
   return(mse_grad + regularization_grad)
 }
 
-# SGD参数
-learning_rate <- 0.01
-epochs <- 1000
-lambda <- 0.1  # 正则化参数
-n_samples <- 100  # 蒙特卡洛模拟的样本数
+# SGD parametor
+learning_rate = 0.01
+epochs = 1000
+lambda = 0.1  
+n_samples = 100  # sample number to choose
 
-# 初始化beta随机
-beta <- runif(2 * K, -0.5, 0.5)
+# initialize beta
+beta = runif(2 * K, -0.5, 0.5)
 
-# SGD算法
+# SGD algorithm
 for (epoch in 1:epochs) {
-  # 随机抽取样本
-  i <- sample(1:n, 50)
-  phi <- Phi[i, , drop = FALSE]
-  yi <- y[i]
-  p <- sapply(data$x[i], function(xi) density_function(xi, data, n_samples))
   
-  # 计算梯度
-  grad <- gradient(beta, phi, y, lambda, p, R, K)
+  # stochastic sample
+  i = sample(1:n, 10)
+  phi = Phi[i, , drop = FALSE]
+  yi = y[i]
   
-  # 更新beta
-  beta <- beta - learning_rate * grad
+  # gradient
+  grad <- gradient(beta, phi, yi, lambda, R, K)
+  
+  # update beta
+  I <- matrix(1, nrow = 20, ncol = 1)
+  beta <- beta - learning_rate * grad * I
 }
 
-# 预测
+# prediction with optimization parameter
 y_pred <- Phi %*% beta
 
 # 绘制结果
@@ -129,42 +116,45 @@ legend('topright', legend = c('Noisy Data', 'SGD Fit', 'True Function'), col = c
 
 
 
+### Above I use SGD to optimazation the nonparameter regression with each experiment I choose 50 stochastic data from the sample
+### Now I want to compare the loss when the number of data I choose was different from 10, 50, 100, 500
+### In the end, I depict a figure to vitually reflect the loss in different number of stochastic sample                         
 
-
-# SGD参数
+                        
+# SGD parameter
 learning_rate <- 0.01
 epochs <- 1000
-lambda <- 0.1  # 正则化参数
-sample_sizes <- c(10, 50, 100)  # 不同样本数量
+lambda <- 0.1  
+sample_sizes <- c(10, 50, 100, 200, 300, 400, 500)  # different tries of number of sample
 
-# 用于保存误差
+# errors or loss
 errors <- numeric(length(sample_sizes))
 
-# 遍历不同的样本数量
+# run the experiment
 for (j in seq_along(sample_sizes)) {
   n_samples <- sample_sizes[j]
   beta <- runif(2 * K, -0.5, 0.5)
   
-  # SGD算法
+  # SGD
   for (epoch in 1:epochs) {
-    # 随机抽取多个样本
-    i <- sample(1:n, n_samples)
-    Xi <- Phi[i, , drop = FALSE]
-    yi <- y[i]
-    p <- sapply(data$x[i], function(xi) density_function(xi, data, n_samples))
+  
+    i = sample(1:n, n_samples)
+    phi = Phi[i, , drop = FALSE]
+    yi = y[i]
     
-    # 计算梯度
-    grad <- gradient(beta, Xi, yi, lambda, p, R)
+    # gradient
+    grad = gradient(beta, phi, yi, lambda, R, K)
     
-    # 更新beta
-    beta <- beta - learning_rate * grad
+    # update beta
+    I = matrix(1, nrow = 20, ncol = 1)
+    beta = beta - learning_rate * grad * I
   }
   
-  # 计算预测误差
-  y_pred <- Phi %*% beta
-  mse <- mean((y - y_pred)^2)
-  errors[j] <- mse
+  # calculate the loss
+  y_pred = Phi %*% beta
+  mse = mean((y - y_pred)^2)
+  errors[j] = loss_function(beta, Phi, y, lambda, R, K)
 }
 
-# 绘制结果
-plot(sample_sizes, errors, type = 'b', col = 'blue', pch = 19, xlab = 'Sample Size', ylab = 'Mean Squared Error', main = 'Error vs Sample Size')
+# plot the out come
+plot(sample_sizes, errors, type = 'b', col = 'blue', pch = 19, xlab = 'Sample Size', ylab = 'Loss', main = 'Loss vs Sample Size')
