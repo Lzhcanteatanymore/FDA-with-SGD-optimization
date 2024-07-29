@@ -108,7 +108,7 @@ for (epoch in 1:epochs) {
 y_pred <- Phi %*% beta
 
 # plot the outcome
-plot(data$x, data$y, col = 'blue', main = 'Fourier Basis Nonparametric Estimation with Density-aware SGD')
+plot(data$x, data$y, col = 'blue', main = 'Fourier Basis Nonparametric Estimation with SGD')
 lines(data$x, y_pred, col = 'green', lwd = 2)
 lines(data$x, y_true, col = 'red', lwd = 2)
 legend('topright', legend = c('Noisy Data', 'SGD Fit', 'True Function'), col = c('blue', 'green', 'red'), lwd = c(1, 2, 2))
