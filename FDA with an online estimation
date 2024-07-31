@@ -1,0 +1,84 @@
+### In this code, I want to simulate an online functional data
+### Through the method mentioned in "Online Estimation for Functional Data"
+### I want to achieve a efficient method even when the data base increases compared with traditional batch method
+
+
+### Noticed that This code is for a dense data situation, you can change the parameter I set to achieve your goal
+
+
+
+##set.seed(123)
+K_max = 1000 # The total number of data block
+L = 20 # the number of candidate band-widths
+i_k = 10 # the number of subject observed in the k_th data block
+j_i_k = 100 # the number of measurement for i_th subject in the k_th data block
+### For dense data, we need to make sure that m_i >> n_k^(5/4). And the parameter above can be adjusted by your wish
+
+
+
+
+
+
+
+mu_function = function(i){
+  mu = matrix(0, nrow = i, ncol = 1)
+  for(m in 1 : i){
+    mu[m] = 2 * sin(2 * pi * t[m])
+  }
+  return(mu)
+}
+
+
+
+stochastic_function = function(i, j){
+  c = matrix(0, nrow = j, ncol = 1)
+  for(m in 1 : j){
+    c[m] = rnorm(1, mean = 0, sd = sqrt( 0.4 * m^(-2)))
+  }
+  stoch = matrix(0, nrow = i, ncol = 1)
+  phi_function = matrix(0, nrow = i, ncol = j)
+  phi_function[,1] = 1
+  for(m in 1 : i){
+    for(n in 2 : j){
+      phi_function[m, n] = ( sqrt(2) * cos((n - 1) * pi * t[m]))
+    }
+  }
+  stoch = phi_function %*% c
+  return(stoch)
+}
+
+data_function = function(mu, stoch, i){
+  x_t = mu + stoch
+  error = rnorm(j_i_k, mean = 0, sd = 0.5)
+  y_t = x_t + error
+  return(data.frame(t = t, y_t = y_t))
+}
+
+
+
+all_data = vector("list", K_max)
+for (k in 1:K_max) {
+  t = runif(j_i_k, min = 0, max = 1)
+  mu = mu_function(j_i_k)
+  stoch = stochastic_function(j_i_k, i_k)
+  new_data = data_function(mu, stoch, j_i_k)
+  all_data[[k]] = new_data
+}
+
+# Combine all data blocks into one large data frame
+combined_data = do.call(rbind, all_data)
+
+# Plot the combined data
+plot(combined_data$t, combined_data$y_t, 
+     type = "p",                     # "p" 表示绘制散点图
+     pch = 16,                       # 实心圆点
+     cex = 0.5,                      # 控制点的大小，0.5 表示点较小
+     col = rgb(0, 0, 1, alpha = 0.2),# 使用半透明蓝色
+     main = "Simulated Functional Data",
+     xlab = "Time", 
+     ylab = "Value")
+
+
+### Now that we have a simulation for the functional data we need to research
+### next we want to find a better way to estimate our model
+
