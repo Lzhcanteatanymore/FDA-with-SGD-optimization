@@ -7,7 +7,7 @@
 
 
 
-##set.seed(123)
+
 K_max = 1000 # The total number of data block
 L = 5 # the number of candidate band-widths
 i_k = 10 # the number of subject observed in the k_th data block
