@@ -109,7 +109,7 @@ z_value = 1.96
 sgd_beta_l = beta_sgd - z_value * sqrt(varbeta_sgd)  # 下限
 sgd_beta_u = beta_sgd + z_value * sqrt(varbeta_sgd)  # 上限
 
-# 计算覆盖率
+# Coverage rate
 coverage = mean(beta >= sgd_beta_l & beta <= sgd_beta_u)
 cat("coverage rate:", coverage, "\n")
 
